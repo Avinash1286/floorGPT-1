@@ -162,6 +162,112 @@ ViewerPanel.jsx
 3D Building Preview + JSON Preview
 ```
 
+**Mathematical Formulation Used for 3D Scene Generation**
+
+FloorGPT converts a 2D floor plan scene graph into 3D geometry by treating plan coordinates as ground-plane values and mapping height on the vertical axis. The project uses an estimated metric scale where `1 unit ~= 1 meter`.
+
+1. **2D to 3D Coordinate Mapping**  
+   A room defined in 2D as `(x, y, width, height)` is placed in 3D by mapping:
+   `X = x`, `Z = y`, and `Y = vertical height`.
+
+   The room center used for placement is:
+   `centerX = x + width / 2`
+   `centerZ = y + height / 2`
+
+   So the room group position becomes:
+   `P_room = (x + width / 2, 0, y + height / 2)`
+
+2. **Room Floor and Ceiling Geometry**  
+   Each room is modeled as rectangular box-based surfaces:
+   `FloorBox = (width, floorThickness, height)`
+   `CeilingBox = (width, ceilingThickness, height)`
+
+   Floor position:
+   `Y_floor = floorThickness / 2`
+
+   Ceiling position:
+   `Y_ceiling = wallHeight`
+
+3. **Room Area and Total Area Calculation**  
+   For each room:
+   `A_room = width * height`
+
+   Total floor area:
+   `A_total = sum(width_i * height_i)`
+
+   This is used in metadata and dashboard scene metrics.
+
+4. **Wall Length, Midpoint, and Rotation**  
+   For an explicit wall segment with endpoints `(x1, y1)` and `(x2, y2)`:
+   `dx = x2 - x1`
+   `dz = y2 - y1`
+
+   Wall length:
+   `L = sqrt(dx^2 + dz^2)`
+
+   Wall midpoint in 3D:
+   `M = ((x1 + x2) / 2, wallHeight / 2, (y1 + y2) / 2)`
+
+   For diagonal walls, rotation about the Y-axis is:
+   `theta = atan2(dz, dx)`
+
+5. **Room Boundary Wall Generation**  
+   For a rectangular room, the boundary walls are derived from the room footprint:
+   North wall: `(x, y) -> (x + width, y)`
+   East wall: `(x + width, y) -> (x + width, y + height)`
+   South wall: `(x + width, y + height) -> (x, y + height)`
+   West wall: `(x, y + height) -> (x, y)`
+
+6. **Door and Window Opening Placement**  
+   Doors and windows are defined by a normalized wall position `p`, where:
+   `0 <= p <= 1`
+
+   The normalized position is clamped:
+   `p' = clamp(p, 0, 1)`
+
+   For a wall of length `L`, opening center along the wall:
+   `c = p' * L`
+
+   If the opening width is `w_open`, then:
+   `start = c - w_open / 2`
+   `end = c + w_open / 2`
+
+   For windows, the top of the opening is:
+   `top = sillHeight + openingHeight`
+
+   The internal center used to place the opening mesh is:
+   `centerAlong = -L / 2 + start + (end - start) / 2`
+   `centerY = sillHeight + openingHeight / 2`
+
+7. **Scene Bounds and Centering**  
+   To center the whole building in the viewer, the scene bounds are computed as:
+   `minX = min(all room and wall x values)`
+   `maxX = max(all room and wall x values)`
+   `minZ = min(all room and wall y values)`
+   `maxZ = max(all room and wall y values)`
+
+   Scene center:
+   `sceneCenterX = (minX + maxX) / 2`
+   `sceneCenterZ = (minZ + maxZ) / 2`
+
+   Then the root object is shifted by:
+   `x' = x - sceneCenterX`
+   `z' = z - sceneCenterZ`
+
+8. **Camera Path / Walkthrough Support**  
+   For navigation and flythrough, waypoint direction is based on the vector between room centers:
+   `dirX = nextCenterX - currentCenterX`
+   `dirZ = nextCenterZ - currentCenterZ`
+
+   Magnitude:
+   `d = sqrt(dirX^2 + dirZ^2)`
+
+   Normalized direction:
+   `uX = dirX / d`
+   `uZ = dirZ / d`
+
+   This helps place the camera slightly behind each room target during flythrough.
+
 This design keeps modules separated, so each part can be improved without breaking the full pipeline.
 
 ---
@@ -186,7 +292,7 @@ The main implementation is divided into practical modules:
   Provides empty scene defaults, scene metrics, opening geometry helpers, and validated room color generation used by both parser and renderer.
 
 - **Scene Generation (`three/SceneBuilder.js`, `three/TextureFactory.js`)**  
-  Converts scene graph data into floors, explicit wall meshes, ceilings, roof elements, textured materials, and door/window openings.
+  Converts scene graph data into floors, explicit wall meshes, ceilings, roof elements, textured materials, and door/window openings using coordinate mapping, wall-length calculation, midpoint placement, and rotation formulas.
 
 - **Rendering and Camera Control (`three/Renderer.js`, `three/CameraControls.js`)**  
   Configures the WebGL renderer, tone mapping, shadow behavior, resize handling, and orbit-based navigation.

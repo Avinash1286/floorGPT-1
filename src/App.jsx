@@ -158,10 +158,7 @@ function App() {
         <header className="panel p-6 sm:p-7">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl space-y-3">
-              <span className="status-chip border-cyan-500/35 bg-cyan-500/10 text-cyan-200">
-                <Sparkles size={14} />
-                ENCT 201 semester prototype
-              </span>
+            
               <div>
                 <h1 className="text-3xl font-semibold tracking-tight text-slate-100 sm:text-4xl">
                   FloorGPT
