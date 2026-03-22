@@ -200,13 +200,6 @@ The main implementation is divided into practical modules:
 - **Performance Handling**  
   Viewer is lazy-loaded and Vite manual chunking separates `three-core`, `three-examples`, React vendor, and UI vendor bundles.
 
-**Implementation Flow Summary**
-
-```text
-UploadPanel -> App state -> Gemini/mock data source -> sceneParser
--> SceneBuilder/Lighting/Renderer -> ViewerPanel
--> Toolbar + Minimap + JsonPreview
-```
 
 ---
 
